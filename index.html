@@ -9,7 +9,7 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f3;color:#1a1a1a;min-height:100vh}
 .app{max-width:960px;margin:0 auto;padding:1.5rem 1rem}
-h1{font-size:22px;font-weight:500;letter-spacing:-0.3px}
+h1{font-size:22px;font-weight:500;letter-spacing:-.3px}
 .subtext{font-size:13px;color:#666;margin-top:2px}
 .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;gap:12px;flex-wrap:wrap}
 .header-actions{display:flex;gap:8px;flex-wrap:wrap}
@@ -18,15 +18,18 @@ h1{font-size:22px;font-weight:500;letter-spacing:-0.3px}
 .btn.primary{background:#2D6A4F;color:#fff;border-color:#2D6A4F}
 .btn.primary:hover{background:#245940}
 .btn.dbtn{color:#b91c1c}
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:10px;margin-bottom:1.5rem}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:1.5rem}
 .stat{background:#fff;border:1px solid #e5e5e5;border-radius:8px;padding:12px;text-align:center}
+.stat.highlight{background:#2D6A4F;border-color:#2D6A4F}
+.stat.highlight .stat-num{color:#fff}
+.stat.highlight .stat-label{color:rgba(255,255,255,.75)}
 .stat-num{font-size:22px;font-weight:500}
 .stat-label{font-size:11px;color:#888;margin-top:2px;text-transform:uppercase;letter-spacing:.5px}
 .toolbar{display:flex;gap:8px;margin-bottom:1.25rem;flex-wrap:wrap;align-items:center}
 .toolbar input{flex:1;min-width:180px;padding:7px 12px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#1a1a1a;font-size:13px;font-family:inherit}
 .toolbar select{padding:7px 12px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#1a1a1a;font-size:13px;cursor:pointer;font-family:inherit}
-.tab-bar{display:flex;gap:2px;background:#ebebeb;border-radius:8px;padding:3px;margin-bottom:1.25rem;width:fit-content;flex-wrap:wrap}
-.tab{padding:6px 13px;border-radius:6px;font-size:13px;cursor:pointer;border:none;background:transparent;color:#666;transition:all .15s;font-family:inherit}
+.tab-bar{display:flex;gap:2px;background:#ebebeb;border-radius:8px;padding:3px;margin-bottom:1.25rem;flex-wrap:wrap}
+.tab{padding:6px 13px;border-radius:6px;font-size:13px;cursor:pointer;border:none;background:transparent;color:#666;transition:all .15s;font-family:inherit;white-space:nowrap}
 .tab.active{background:#fff;color:#1a1a1a;border:1px solid #ddd}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:14px}
 .card{background:#fff;border:1px solid #e5e5e5;border-radius:12px;overflow:hidden;cursor:pointer;transition:border-color .15s}
@@ -96,6 +99,7 @@ textarea.finput{resize:vertical;min-height:58px}
 .clearbox{background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:14px;text-align:center}
 .clearbox p{font-size:13px;color:#b91c1c;margin-bottom:12px;line-height:1.5}
 .apibanner{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;margin-bottom:1.25rem;font-size:13px;color:#1d4ed8;display:flex;align-items:center;gap:10px}
+.fetch-progress{font-size:12px;color:#666;margin-top:8px;padding:8px;background:#f5f5f3;border-radius:6px;display:none}
 </style>
 </head>
 <body>
@@ -114,7 +118,7 @@ textarea.finput{resize:vertical;min-height:58px}
   </div>
   <div id="apibanner" class="apibanner" style="display:none">
     <i class="ti ti-info-circle"></i>
-    <span>Set a Google Books API key to fetch covers and release dates automatically.</span>
+    <span>Set a Google Books API key to auto-fetch covers for all your books.</span>
     <button class="btn" style="margin-left:auto;padding:4px 10px;font-size:12px" onclick="openApiModal()">Set key</button>
   </div>
   <div class="stats" id="stats"></div>
@@ -181,6 +185,7 @@ textarea.finput{resize:vertical;min-height:58px}
   <div class="modal" onclick="event.stopPropagation()">
     <div class="mhead"><h2>Import books</h2><button class="btn" style="padding:4px 8px" onclick="closeAll()"><i class="ti ti-x"></i></button></div>
     <div class="mbody">
+      <p style="font-size:13px;color:#555;margin-bottom:1rem;line-height:1.6">Upload <strong>both</strong> CSVs — the app merges them into one unified shelf with no duplicates. A book appearing in both sources becomes a single entry with the owned flag set.</p>
       <div class="itabs">
         <button class="itab active" id="itab-gr" onclick="switchImportTab('gr')"><i class="ti ti-brand-goodreads"></i> Goodreads export</button>
         <button class="itab" id="itab-tbr" onclick="switchImportTab('tbr')"><i class="ti ti-home"></i> Physical TBR sheet</button>
@@ -188,38 +193,37 @@ textarea.finput{resize:vertical;min-height:58px}
       <div class="ipane active" id="ipane-gr">
         <div class="dropz" onclick="document.getElementById('fileGr').click()">
           <i class="ti ti-file-spreadsheet"></i>
-          <p>Upload Goodreads CSV export</p>
+          <p id="grLabel">Upload Goodreads CSV export</p>
           <small>goodreads_library_export.csv</small>
           <input type="file" id="fileGr" accept=".csv" style="display:none" onchange="loadCSV(event,'gr')">
         </div>
         <div class="hint">
           <strong>How to export from Goodreads</strong>
-          <ol><li>Go to goodreads.com → My Books</li><li>Click <em>Import and export</em> (bottom of left sidebar)</li><li>Click <em>Export Library</em> and download the CSV</li></ol>
+          <ol><li>Go to goodreads.com → My Books</li><li>Click <em>Import and export</em> (bottom of left sidebar)</li><li>Click <em>Export Library</em> and save the CSV</li></ol>
           Shelves map automatically: <em>to-read → To Be Read</em>, <em>currently-reading → Reading Now</em>, <em>read → Read & Reviewed</em>.
         </div>
-        <div class="note blue"><i class="ti ti-git-merge"></i><span>If a book from Goodreads already exists on your shelf (e.g. from your physical TBR), the two are <strong>merged into one entry</strong> — owned flag kept, cover/author filled in where missing, more specific status wins. No duplicate created.</span></div>
         <div id="prevGr" class="preview"></div>
       </div>
       <div class="ipane" id="ipane-tbr">
         <div class="dropz" onclick="document.getElementById('fileTbr').click()">
           <i class="ti ti-home"></i>
-          <p>Upload your physical TBR sheet</p>
+          <p id="tbrLabel">Upload your physical TBR sheet</p>
           <small>Any CSV with a title column</small>
           <input type="file" id="fileTbr" accept=".csv" style="display:none" onchange="loadCSV(event,'tbr')">
         </div>
         <div class="hint">
-          <strong>Expected columns</strong> (any order, flexible names):<br>
+          <strong>Expected columns</strong> (flexible names, any order):<br>
           <code style="font-size:11px">title</code>, <code style="font-size:11px">author</code>, <code style="font-size:11px">date / published</code>, <code style="font-size:11px">status</code>, <code style="font-size:11px">cover</code><br><br>
-          Recognised status values: <em>tbr, arc, reading, review, film, dnf, editing, done</em> — anything else defaults to To Be Read.
+          Every book from this sheet is flagged as <strong>physically owned</strong>.
         </div>
-        <div class="note green"><i class="ti ti-home"></i><span>Every book in this sheet is <strong>flagged as physically owned</strong>. If it already exists on your shelf from Goodreads, it is merged and the owned flag added — no duplicate entry is created.</span></div>
-        <div class="note blue"><i class="ti ti-git-merge"></i><span>Matching uses <strong>normalised title</strong> (lowercase, punctuation stripped, leading "the/a/an" ignored), so "The Hobbit" and "Hobbit, The" still match correctly.</span></div>
         <div id="prevTbr" class="preview"></div>
       </div>
+      <div class="note blue" style="margin-top:1rem"><i class="ti ti-git-merge"></i><span id="mergeNote">Upload both CSVs then click Import — books in both are merged into one entry, never duplicated.</span></div>
+      <div id="fetchProgress" class="fetch-progress"></div>
     </div>
     <div class="mfoot">
       <button class="btn" onclick="closeAll()">Cancel</button>
-      <button class="btn primary" id="confirmImport" style="display:none" onclick="doImport()">Import books</button>
+      <button class="btn primary" id="confirmImport" style="display:none" onclick="doImport()">Import &amp; merge books</button>
     </div>
   </div>
 </div>
@@ -229,7 +233,7 @@ textarea.finput{resize:vertical;min-height:58px}
   <div class="modal" style="max-width:420px" onclick="event.stopPropagation()">
     <div class="mhead"><h2>Google Books API key</h2><button class="btn" style="padding:4px 8px" onclick="closeAll()"><i class="ti ti-x"></i></button></div>
     <div class="mbody">
-      <p style="font-size:13px;color:#666;margin-bottom:12px">Get a free key at <a href="https://console.cloud.google.com/apis/library/books.googleapis.com" style="color:#2D6A4F" target="_blank">Google Cloud Console</a> → enable Books API → create credentials.</p>
+      <p style="font-size:13px;color:#666;margin-bottom:12px;line-height:1.5">Get a free key at <a href="https://console.cloud.google.com/apis/library/books.googleapis.com" style="color:#2D6A4F" target="_blank">Google Cloud Console</a> → enable Books API → Credentials → Create API key.<br><br>The key is used to fetch covers and release dates for your books automatically after import.</p>
       <span class="flabel">API key</span><input class="finput" type="text" id="apiKeyInput" placeholder="AIza…">
     </div>
     <div class="mfoot">
@@ -251,46 +255,108 @@ const STATUSES=[
   {id:'done',   label:'Read & Reviewed',     color:'#166534',bg:'#DCFCE7'}
 ];
 const SMAP=Object.fromEntries(STATUSES.map(s=>[s.id,s]));
+// Higher = more progressed; used to pick winner when merging statuses
 const SPRI={tbr:0,arc:1,reading:2,review:3,film:3,dnf:2,editing:3,done:4};
 const ALL_TABS=[{id:'all',label:'All'},...STATUSES.map(s=>({id:s.id,label:s.label}))];
 
-let books=[], apiKey='', activeTab='all', editId=null, pending=[], pendingType='';
+let books=[], apiKey='', activeTab='all', editId=null;
+
+// Pending import: two slots, merged together before committing
+let pendingGr=[], pendingTbr=[];
 
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
 
-// Normalise title: lowercase, strip leading articles, strip non-alphanumeric
-function norm(s){return(s||'').toLowerCase().replace(/^(the|a|an)\s+/,'').replace(/[^a-z0-9]/g,'')}
+// ── Title normalisation for matching ─────────────────────────────────────────
+// Strip leading articles, lowercase, remove all non-alphanumeric
+function norm(s){
+  return(s||'').toLowerCase()
+    .replace(/^(the|a|an)\s+/,'')
+    .replace(/,\s*(the|a|an)$/,'')   // "Hobbit, The" → "hobbit"
+    .replace(/[^a-z0-9]/g,'');
+}
 
-// Find existing book by normalised title
-function findBook(title){const k=norm(title);return books.find(b=>norm(b.title)===k)||null}
+// ── Cover URL sanitiser ───────────────────────────────────────────────────────
+// Google Books always returns http:// which browsers block on https pages
+function fixCover(url){
+  if(!url)return'';
+  return url.replace(/^http:\/\//,'https://').trim();
+}
 
-// Merge incoming record into existing — never creates a duplicate
-// owned: true if either says owned
-// cover/author/date: fill blanks only
-// status: higher priority wins
+// ── Find book on shelf by normalised title ────────────────────────────────────
+function findBook(title){
+  const k=norm(title);
+  return books.find(b=>norm(b.title)===k)||null;
+}
+
+// ── Merge inc into ex in-place ────────────────────────────────────────────────
+// Rules:
+//   owned      → true if EITHER source says owned
+//   cover      → keep existing if present, else take incoming (fixed)
+//   author     → keep existing if present, else take incoming
+//   releaseDate→ keep existing if present, else take incoming
+//   status     → whichever has higher priority (more progressed) wins
 function mergeInto(ex,inc){
   if(inc.owned) ex.owned=true;
-  if(!ex.cover       && inc.cover)       ex.cover=inc.cover;
+  if(!ex.cover       && inc.cover)       ex.cover=fixCover(inc.cover);
   if(!ex.author      && inc.author)      ex.author=inc.author;
   if(!ex.releaseDate && inc.releaseDate) ex.releaseDate=inc.releaseDate;
   if((SPRI[inc.status]||0)>(SPRI[ex.status]||0)) ex.status=inc.status;
 }
 
-function save(){try{localStorage.setItem('shelf_v2',JSON.stringify(books));localStorage.setItem('shelf_key',apiKey)}catch(e){}}
-function load(){try{const d=localStorage.getItem('shelf_v2');if(d)books=JSON.parse(d);const k=localStorage.getItem('shelf_key');if(k)apiKey=k}catch(e){}}
+// ── Merge two parsed CSV arrays together into one deduplicated list ───────────
+// This runs BEFORE touching the shelf so both CSVs inform each other
+function mergeParsedLists(grRows, tbrRows){
+  // Build a map keyed by norm title; TBR rows seed it first
+  const map=new Map();
+  for(const r of tbrRows){
+    const k=norm(r.title);
+    if(!map.has(k)) map.set(k,{...r});
+    else mergeInto(map.get(k),r);
+  }
+  // Merge Goodreads rows into the same map
+  for(const r of grRows){
+    const k=norm(r.title);
+    if(!map.has(k)) map.set(k,{...r});
+    else mergeInto(map.get(k),r);
+  }
+  return Array.from(map.values());
+}
+
+// ── Persist ───────────────────────────────────────────────────────────────────
+function save(){
+  try{localStorage.setItem('shelf_v3',JSON.stringify(books));
+      localStorage.setItem('shelf_key',apiKey)}catch(e){}
+}
+function load(){
+  try{const d=localStorage.getItem('shelf_v3');if(d)books=JSON.parse(d);
+      const k=localStorage.getItem('shelf_key');if(k)apiKey=k}catch(e){}
+}
 
 load();
 if(!apiKey) document.getElementById('apibanner').style.display='flex';
 
+// ── Stats bar ─────────────────────────────────────────────────────────────────
+// physicalTbr = owned + status is tbr (physically own but haven't read yet)
 function renderStats(){
+  const total=books.length;
+  const owned=books.filter(b=>b.owned).length;
+  const physTbr=books.filter(b=>b.owned && b.status==='tbr').length;
+  const arcs=books.filter(b=>b.status==='arc').length;
+  const reading=books.filter(b=>b.status==='reading').length;
+  const done=books.filter(b=>b.status==='done').length;
   document.getElementById('stats').innerHTML=`
-    <div class="stat"><div class="stat-num">${books.length}</div><div class="stat-label">Total</div></div>
-    <div class="stat"><div class="stat-num">${books.filter(b=>b.owned).length}</div><div class="stat-label">Owned</div></div>
-    <div class="stat"><div class="stat-num">${books.filter(b=>b.status==='arc').length}</div><div class="stat-label">ARCs</div></div>
-    <div class="stat"><div class="stat-num">${books.filter(b=>b.status==='reading').length}</div><div class="stat-label">Reading</div></div>
-    <div class="stat"><div class="stat-num">${books.filter(b=>b.status==='done').length}</div><div class="stat-label">Reviewed</div></div>`;
+    <div class="stat highlight">
+      <div class="stat-num">${physTbr}</div>
+      <div class="stat-label">Physical TBR</div>
+    </div>
+    <div class="stat"><div class="stat-num">${total}</div><div class="stat-label">Total</div></div>
+    <div class="stat"><div class="stat-num">${owned}</div><div class="stat-label">Owned</div></div>
+    <div class="stat"><div class="stat-num">${arcs}</div><div class="stat-label">ARCs</div></div>
+    <div class="stat"><div class="stat-num">${reading}</div><div class="stat-label">Reading</div></div>
+    <div class="stat"><div class="stat-num">${done}</div><div class="stat-label">Reviewed</div></div>`;
 }
 
+// ── Tab bar ───────────────────────────────────────────────────────────────────
 function renderTabs(){
   const counts={};books.forEach(b=>{counts[b.status]=(counts[b.status]||0)+1});
   document.getElementById('tabs').innerHTML=ALL_TABS.map(t=>{
@@ -301,8 +367,9 @@ function renderTabs(){
 }
 function setTab(id){activeTab=id;render()}
 
+// ── Main grid render ──────────────────────────────────────────────────────────
 function render(){
-  renderStats();renderTabs();
+  renderStats(); renderTabs();
   const q=document.getElementById('q').value.toLowerCase();
   const sort=document.getElementById('sortby').value;
   const ownedOnly=document.getElementById('ownedOnly').checked;
@@ -314,6 +381,7 @@ function render(){
   else if(sort==='date') list.sort((a,b)=>(b.releaseDate||'').localeCompare(a.releaseDate||''));
   else if(sort==='status') list.sort((a,b)=>(SPRI[b.status]||0)-(SPRI[a.status]||0));
   else list.sort((a,b)=>b.addedAt-a.addedAt);
+
   const grid=document.getElementById('grid');
   if(!list.length){
     grid.innerHTML=`<div class="empty"><i class="ti ti-bookmarks"></i>No books here yet.<br><small style="color:#bbb">Import a CSV or add a book manually.</small></div>`;
@@ -321,7 +389,11 @@ function render(){
   }
   grid.innerHTML=list.map(b=>{
     const s=SMAP[b.status]||STATUSES[0];
-    const cover=b.cover?`<img src="${b.cover}" alt="" loading="lazy">`:`<div class="no-cover"><i class="ti ti-book"></i><span>${esc(b.title)}</span></div>`;
+    const coverUrl=fixCover(b.cover);
+    const cover=coverUrl
+      ?`<img src="${coverUrl}" alt="" loading="lazy" onerror="this.style.display='none';this.nextSibling.style.display='flex'">`+
+        `<div class="no-cover" style="display:none"><i class="ti ti-book"></i><span>${esc(b.title)}</span></div>`
+      :`<div class="no-cover"><i class="ti ti-book"></i><span>${esc(b.title)}</span></div>`;
     const owned=b.owned?`<div class="owned-badge" title="Physically owned"><i class="ti ti-home"></i></div>`:'';
     const opts=STATUSES.map(st=>`<option value="${st.id}"${st.id===b.status?' selected':''}>${st.label}</option>`).join('');
     return`<div class="card" onclick="openEdit('${b.id}')">
@@ -341,6 +413,7 @@ function fmtDate(d){try{return new Date(d).toLocaleDateString('en-GB',{year:'num
 function quickStatus(id,val){const b=books.find(x=>x.id===id);if(b){b.status=val;save();render()}}
 function fillStatus(elId,val){document.getElementById(elId).innerHTML=STATUSES.map(s=>`<option value="${s.id}"${s.id===val?' selected':''}>${s.label}</option>`).join('')}
 
+// ── Clear all ─────────────────────────────────────────────────────────────────
 function openClearAll(){
   if(!books.length){alert('Your shelf is already empty.');return}
   document.getElementById('clearCount').textContent=`all ${books.length} book${books.length!==1?'s':''}`;
@@ -348,6 +421,7 @@ function openClearAll(){
 }
 function clearAll(){books=[];activeTab='all';save();closeAll();render()}
 
+// ── Add / Edit ────────────────────────────────────────────────────────────────
 function openAdd(){
   editId=null;
   document.getElementById('addTitle').textContent='Add book';
@@ -377,7 +451,15 @@ function openEdit(id){
 function saveBook(){
   const title=document.getElementById('fTitle').value.trim();
   if(!title){alert('Title is required.');return}
-  const data={title,author:document.getElementById('fAuthor').value.trim(),releaseDate:document.getElementById('fDate').value.trim(),cover:document.getElementById('fCover').value.trim(),status:document.getElementById('fStatus').value,notes:document.getElementById('fNotes').value.trim(),owned:document.getElementById('fOwned').checked};
+  const data={
+    title,
+    author:document.getElementById('fAuthor').value.trim(),
+    releaseDate:document.getElementById('fDate').value.trim(),
+    cover:fixCover(document.getElementById('fCover').value.trim()),
+    status:document.getElementById('fStatus').value,
+    notes:document.getElementById('fNotes').value.trim(),
+    owned:document.getElementById('fOwned').checked
+  };
   if(editId){
     Object.assign(books.find(x=>x.id===editId),data);
   } else {
@@ -398,6 +480,7 @@ function deleteBook(){
 }
 function closeAll(){document.querySelectorAll('.overlay').forEach(m=>m.style.display='none')}
 
+// ── Google Books search ───────────────────────────────────────────────────────
 async function doSearch(){
   const q=document.getElementById('gbQ').value.trim();if(!q)return;
   const el=document.getElementById('srList');
@@ -405,11 +488,11 @@ async function doSearch(){
   try{
     const url=`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=8${apiKey?'&key='+apiKey:''}`;
     const d=await(await fetch(url)).json();
-    if(!d.items||!d.items.length){el.innerHTML='<p style="font-size:12px;color:#888;padding:6px">No results found.</p>';return}
+    if(!d.items||!d.items.length){el.innerHTML='<p style="font-size:12px;color:#888;padding:6px">No results.</p>';return}
     window._sr=d.items;
     el.innerHTML=d.items.map((it,i)=>{
       const v=it.volumeInfo;
-      const th=(v.imageLinks?.thumbnail||v.imageLinks?.smallThumbnail||'').replace('http://','https://');
+      const th=fixCover(v.imageLinks?.thumbnail||v.imageLinks?.smallThumbnail||'');
       return`<div class="sritem" onclick="pickBook(${i})">
         <div class="srthumb">${th?`<img src="${th}" alt="">`:''}</div>
         <div class="srinfo"><strong>${esc(v.title||'Untitled')}</strong><span>${(v.authors||[]).join(', ')}${v.publishedDate?' · '+v.publishedDate:''}</span></div>
@@ -422,16 +505,51 @@ function pickBook(i){
   document.getElementById('fTitle').value=v.title||'';
   document.getElementById('fAuthor').value=(v.authors||[]).join(', ');
   document.getElementById('fDate').value=v.publishedDate||'';
-  const th=(v.imageLinks?.thumbnail||v.imageLinks?.smallThumbnail||'').replace('http://','https://');
-  document.getElementById('fCover').value=th;
+  document.getElementById('fCover').value=fixCover(v.imageLinks?.thumbnail||v.imageLinks?.smallThumbnail||'');
   document.getElementById('srList').innerHTML='<p style="font-size:12px;color:#166534;padding:6px">✓ Details filled in — review and save.</p>';
 }
 
+// ── Auto-fetch covers from Google Books ───────────────────────────────────────
+// Called after import for books missing a cover. Batches requests with a small delay.
+async function fetchMissingCovers(bookList){
+  if(!apiKey) return; // only possible with an API key
+  const missing=bookList.filter(b=>!b.cover);
+  if(!missing.length) return;
+  const prog=document.getElementById('fetchProgress');
+  prog.style.display='block';
+  for(let i=0;i<missing.length;i++){
+    const b=missing[i];
+    prog.textContent=`Fetching covers… ${i+1} / ${missing.length}`;
+    try{
+      const q=encodeURIComponent((b.title+' '+(b.author||'')).trim());
+      const url=`https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=1&key=${apiKey}`;
+      const d=await(await fetch(url)).json();
+      const v=d.items?.[0]?.volumeInfo;
+      if(v){
+        const thumb=fixCover(v.imageLinks?.thumbnail||v.imageLinks?.smallThumbnail||'');
+        if(thumb) b.cover=thumb;
+        if(!b.releaseDate && v.publishedDate) b.releaseDate=v.publishedDate;
+        if(!b.author && v.authors) b.author=v.authors.join(', ');
+      }
+    }catch(e){}
+    // small delay to avoid rate-limiting
+    await new Promise(r=>setTimeout(r,120));
+  }
+  prog.style.display='none';
+  save(); render();
+}
+
+// ── Import ────────────────────────────────────────────────────────────────────
 function openImport(){
-  switchImportTab('gr');pending=[];
+  switchImportTab('gr');
+  pendingGr=[];pendingTbr=[];
   ['prevGr','prevTbr'].forEach(id=>document.getElementById(id).innerHTML='');
   document.getElementById('confirmImport').style.display='none';
+  document.getElementById('fetchProgress').style.display='none';
   ['fileGr','fileTbr'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('grLabel').textContent='Upload Goodreads CSV export';
+  document.getElementById('tbrLabel').textContent='Upload your physical TBR sheet';
+  document.getElementById('mergeNote').textContent='Upload both CSVs then click Import — books in both are merged into one entry, never duplicated.';
   document.getElementById('importModal').style.display='flex';
 }
 function switchImportTab(t){
@@ -439,96 +557,110 @@ function switchImportTab(t){
     document.getElementById('itab-'+x).classList.toggle('active',x===t);
     document.getElementById('ipane-'+x).classList.toggle('active',x===t);
   });
-  pending=[];pendingType=t;
-  document.getElementById('confirmImport').style.display='none';
+}
+function updateImportButton(){
+  const hasAny=pendingGr.length||pendingTbr.length;
+  document.getElementById('confirmImport').style.display=hasAny?'inline-flex':'none';
+  // Update merge note
+  if(pendingGr.length && pendingTbr.length){
+    const grKeys=new Set(pendingGr.map(r=>norm(r.title)));
+    const overlap=pendingTbr.filter(r=>grKeys.has(norm(r.title))).length;
+    document.getElementById('mergeNote').textContent=
+      overlap
+        ? `${overlap} book${overlap!==1?'s':''} found in both lists — ${overlap!==1?'they':'it'} will be merged into single ${overlap!==1?'entries':'entry'} with the owned flag set.`
+        : 'No overlap detected between the two lists — all books will be added.';
+  }
 }
 
 function loadCSV(evt,type){
   const file=evt.target.files[0];if(!file)return;
-  pendingType=type;
   const reader=new FileReader();
   reader.onload=e=>{
     const raw=parseCSV(e.target.result,type);
-    if(!raw.length){
-      document.getElementById('prev'+cap(type)).innerHTML='<p style="color:#b91c1c;font-size:13px">Could not parse CSV — make sure it has a title column.</p>';
-      return;
-    }
-    // Step 1: deduplicate within the uploaded file by normalised title
-    const seenKeys=new Set();
-    const deduped=[];
-    let inFileDups=0;
-    for(const r of raw){
-      const k=norm(r.title);
-      if(seenKeys.has(k)){inFileDups++;continue;}
-      seenKeys.add(k);
-      deduped.push(r);
-    }
-    // Step 2: classify each unique row against existing shelf
-    for(const r of deduped) r._action=findBook(r.title)?'merge':'add';
-    pending=deduped;
-    const toAdd=deduped.filter(r=>r._action==='add').length;
-    const toMerge=deduped.filter(r=>r._action==='merge').length;
-    const sample=deduped.slice(0,7);
-    document.getElementById('prev'+cap(type)).innerHTML=`
-      <div class="pstats">
-        <span><strong>${toAdd}</strong> new book${toAdd!==1?'s':''} to add</span>
-        ${toMerge?`<span style="color:#1d4ed8"><strong>${toMerge}</strong> will merge with existing</span>`:''}
-        ${inFileDups?`<span style="color:#888"><strong>${inFileDups}</strong> in-file duplicate${inFileDups!==1?'s':''} removed</span>`:''}
-      </div>
-      <div class="plist">
-        ${sample.map(r=>`<p>
-          <span class="ptitle">${esc(r.title)}${r.author?` <span style="color:#888">– ${esc(r.author)}</span>`:''}</span>
-          ${r._action==='merge'?'<span class="tag tmerge">merge</span>':(type==='tbr'?'<span class="tag towned">owned + add</span>':'<span class="tag tnew">new</span>')}
-        </p>`).join('')}
-        ${deduped.length>7?`<p style="color:#888">…and ${deduped.length-7} more</p>`:''}
-      </div>`;
-    document.getElementById('confirmImport').style.display='inline-flex';
+    // Deduplicate within the file by norm title
+    const seen=new Set(); const deduped=[]; let dups=0;
+    for(const r of raw){const k=norm(r.title);if(seen.has(k)){dups++;continue;}seen.add(k);deduped.push(r);}
+    if(type==='gr'){pendingGr=deduped;} else {pendingTbr=deduped;}
+    const labelEl=type==='gr'?'grLabel':'tbrLabel';
+    document.getElementById(labelEl).textContent=`✓ ${deduped.length} books loaded${dups?' ('+dups+' in-file dups removed)':''}`;
+    // Show preview
+    const sample=deduped.slice(0,6);
+    document.getElementById('prev'+(type==='gr'?'Gr':'Tbr')).innerHTML=`
+      <div class="pstats"><span style="color:#166534"><strong>${deduped.length}</strong> books parsed${dups?` · <strong>${dups}</strong> in-file duplicates removed`:''}</span></div>
+      <div class="plist">${sample.map(r=>`<p><span class="ptitle">${esc(r.title)}${r.author?` <span style="color:#888">– ${esc(r.author)}</span>`:''}</span>${type==='tbr'?'<span class="tag towned">owned</span>':'<span class="tag tnew">gr</span>'}</p>`).join('')}${deduped.length>6?`<p style="color:#888">…and ${deduped.length-6} more</p>`:''}</div>`;
+    updateImportButton();
   };
   reader.readAsText(file);
 }
 
-function cap(s){return s.charAt(0).toUpperCase()+s.slice(1)}
-
-// Final import: merge or add, never duplicate
-function doImport(){
-  let added=0,merged=0;
-  for(const b of pending){
+// ── Commit import ─────────────────────────────────────────────────────────────
+async function doImport(){
+  // 1. Merge the two pending lists together first
+  const merged=mergeParsedLists(pendingGr, pendingTbr);
+  // 2. Now integrate into the shelf
+  let added=0,merged_shelf=0;
+  for(const b of merged){
     const ex=findBook(b.title);
-    if(ex){mergeInto(ex,b);merged++;}
-    else{const{_action,...clean}=b;books.push(clean);added++;}
+    if(ex){mergeInto(ex,b);merged_shelf++;}
+    else{books.push({...b,id:uid(),addedAt:Date.now()});added++;}
   }
-  save();closeAll();render();
-  pending=[];
-  const msg=[added?`${added} book${added!==1?'s':''} added`:'',merged?`${merged} merged with existing entries`:''].filter(Boolean);
-  alert(msg.join(' · ')||'Nothing to import.');
+  save(); closeAll(); render();
+  pendingGr=[]; pendingTbr=[];
+  const parts=[added?`${added} book${added!==1?'s':''} added`:'', merged_shelf?`${merged_shelf} merged with existing entries`:''].filter(Boolean);
+  alert(parts.join(' · ')||'Nothing new to import.');
+  // 3. Auto-fetch missing covers in background
+  await fetchMissingCovers(books);
 }
+
+// ── CSV parser ────────────────────────────────────────────────────────────────
+const STATUS_ALIAS={
+  'tbr':'tbr','to be read':'tbr',
+  'arc':'arc','arc received':'arc','arcreceived':'arc',
+  'reading':'reading','reading now':'reading','currentlyreading':'reading',
+  'review':'review','write review':'review','writereview':'review',
+  'film':'film','film review':'film','filmreview':'film',
+  'dnf':'dnf',
+  'editing':'editing','editing in progress':'editing','editinginprogress':'editing',
+  'done':'done','read':'done','read reviewed':'done','read and reviewed':'done','readandreviewed':'done'
+};
 
 function parseCSV(text,type){
   const lines=text.split(/\r?\n/).filter(l=>l.trim());
   if(lines.length<2)return[];
   const headers=splitLine(lines[0]).map(h=>h.toLowerCase().replace(/[^a-z0-9]/g,''));
-  const col=(...names)=>{for(const n of names){const i=headers.findIndex(h=>h.includes(n));if(i>=0)return i;}return -1};
-  const tC=col('title'),aC=col('author'),dC=col('date','published','release'),cC=col('cover','image','thumbnail');
-  const SA={'tbr':'tbr','to be read':'tbr','arc':'arc','arc received':'arc','arcreceived':'arc','reading':'reading','reading now':'reading','currentlyreading':'reading','review':'review','write review':'review','writereview':'review','film':'film','film review':'film','filmreview':'film','dnf':'dnf','editing':'editing','editing in progress':'editing','editinginprogress':'editing','done':'done','read':'done','read reviewed':'done','read and reviewed':'done','read&reviewed':'done'};
+  const col=(...names)=>{
+    for(const n of names){const i=headers.findIndex(h=>h.includes(n));if(i>=0)return i;}
+    return -1;
+  };
+  const tC=col('title'), aC=col('author'),
+        dC=col('date','published','release'),
+        cC=col('cover','image','thumbnail'),
+        isbnC=col('isbn13','isbn','isbn10');
+
   return lines.slice(1).map(line=>{
     const c=splitLine(line);
-    const title=(tC>=0?c[tC]||'':'').replace(/^"|"$/g,'').trim();
-    if(!title)return null;
-    const author=(aC>=0?c[aC]||'':'').replace(/^"|"$/g,'').trim();
-    const releaseDate=(dC>=0?c[dC]||'':'').replace(/^"|"$/g,'').trim();
-    const cover=(cC>=0?c[cC]||'':'').replace(/^"|"$/g,'').trim();
+    const get=i=>(i>=0?c[i]||'':'').replace(/^"|"$/g,'').trim();
+    const title=get(tC); if(!title)return null;
+    const author=get(aC);
+    const releaseDate=get(dC);
+    const cover=fixCover(get(cC));
+    const isbn=get(isbnC);
+
     let status='tbr';
     if(type==='gr'){
+      // Goodreads "Exclusive Shelf" column
       const sC=col('exclusive','shelve','shelf','bookshelve');
-      const shelf=(sC>=0?(c[sC]||''):'').toLowerCase().replace(/[^a-z]/g,'');
-      if(shelf.includes('currentlyreading'))status='reading';
-      else if(shelf==='read')status='done';
+      const shelf=get(sC).toLowerCase().replace(/[^a-z]/g,'');
+      if(shelf==='currentlyreading') status='reading';
+      else if(shelf==='read') status='done';
+      else status='tbr';
     } else {
       const sC=col('status');
-      const raw=(sC>=0?(c[sC]||''):'').replace(/^"|"$/g,'').trim().toLowerCase().replace(/[^a-z ]/g,'').trim();
-      status=SA[raw]||'tbr';
+      const raw=get(sC).toLowerCase().replace(/[^a-z ]/g,'').trim();
+      status=STATUS_ALIAS[raw]||'tbr';
     }
-    return{id:uid(),title,author,releaseDate,cover,status,owned:type==='tbr',notes:'',addedAt:Date.now()};
+
+    return{title,author,releaseDate,cover,isbn,status,owned:type==='tbr',notes:''};
   }).filter(Boolean);
 }
 
@@ -536,13 +668,21 @@ function splitLine(line){
   const res=[];let cur='';let inQ=false;
   for(let i=0;i<line.length;i++){
     const ch=line[i];
-    if(ch==='"'){inQ=!inQ;}else if(ch===','&&!inQ){res.push(cur);cur='';}else cur+=ch;
+    if(ch==='"'){inQ=!inQ;}
+    else if(ch===','&&!inQ){res.push(cur);cur='';}
+    else cur+=ch;
   }
   res.push(cur);return res;
 }
 
+// ── API key ───────────────────────────────────────────────────────────────────
 function openApiModal(){document.getElementById('apiKeyInput').value=apiKey;document.getElementById('apiModal').style.display='flex'}
-function saveApiKey(){apiKey=document.getElementById('apiKeyInput').value.trim();save();if(apiKey)document.getElementById('apibanner').style.display='none';closeAll()}
+function saveApiKey(){
+  apiKey=document.getElementById('apiKeyInput').value.trim();
+  save();
+  if(apiKey) document.getElementById('apibanner').style.display='none';
+  closeAll();
+}
 
 render();
 </script>
