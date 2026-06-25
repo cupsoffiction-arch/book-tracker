@@ -113,6 +113,7 @@ textarea.finput{resize:vertical;min-height:58px}
       <button class="btn" onclick="openImport()"><i class="ti ti-upload"></i> Import</button>
       <button class="btn" onclick="openApiModal()"><i class="ti ti-key"></i> API key</button>
       <button class="btn dbtn" onclick="openClearAll()"><i class="ti ti-trash"></i> Clear all</button>
+      <button class="btn" onclick="fetchMissingCovers(books)" style="color:#1d4ed8"><i class="ti ti-photo-search"></i> Fetch covers</button>
       <button class="btn primary" onclick="openAdd()"><i class="ti ti-plus"></i> Add book</button>
     </div>
   </div>
@@ -135,6 +136,13 @@ textarea.finput{resize:vertical;min-height:58px}
   </div>
   <div class="grid" id="grid"></div>
 </div>
+
+<!-- Global fetch progress banner -->
+<div id="globalFetchBanner" style="display:none;position:fixed;bottom:0;left:0;right:0;background:#1d4ed8;color:#fff;padding:10px 16px;font-size:13px;align-items:center;gap:12px;z-index:300">
+  <i class="ti ti-loader" style="animation:spin 1s linear infinite"></i>
+  <span id="globalFetchText">Fetching covers…</span>
+</div>
+<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
 
 <!-- Clear all -->
 <div class="overlay" id="clearModal" style="display:none" onclick="if(event.target===this)closeAll()">
@@ -219,7 +227,6 @@ textarea.finput{resize:vertical;min-height:58px}
         <div id="prevTbr" class="preview"></div>
       </div>
       <div class="note blue" style="margin-top:1rem"><i class="ti ti-git-merge"></i><span id="mergeNote">Upload both CSVs then click Import — books in both are merged into one entry, never duplicated.</span></div>
-      <div id="fetchProgress" class="fetch-progress"></div>
     </div>
     <div class="mfoot">
       <button class="btn" onclick="closeAll()">Cancel</button>
@@ -569,52 +576,65 @@ function pickBook(i){
   document.getElementById('srList').innerHTML='<p style="font-size:12px;color:#166534;padding:6px">✓ Details filled in — review and save.</p>';
 }
 
-// ── Auto-fetch covers after import ───────────────────────────────────────────
-// Tries Google Books first (needs key), falls back to Open Library (free, no key).
-// Runs quietly in the background after import completes.
+// ── Cover fetcher ─────────────────────────────────────────────────────────────
+// 4-strategy fetch per book: GB title+author → GB title-only → OL title+author → OL title-only
+// Covers appear progressively. Triggered after import AND by the "Fetch covers" button.
+let _fetchRunning=false;
 async function fetchMissingCovers(bookList){
+  if(_fetchRunning)return;
   const missing=bookList.filter(b=>!b.cover);
-  if(!missing.length)return;
-  const prog=document.getElementById('fetchProgress');
-  prog.style.display='block';
+  if(!missing.length){render();return;}
+  _fetchRunning=true;
+  const banner=document.getElementById('globalFetchBanner');
+  const bannerText=document.getElementById('globalFetchText');
+  banner.style.display='flex';
+
   for(let i=0;i<missing.length;i++){
     const b=missing[i];
-    prog.textContent=`Fetching covers… ${i+1} / ${missing.length}`;
+    bannerText.textContent='Fetching covers '+( i+1)+' / '+missing.length+' — '+b.title;
     let found=false;
-
-    // Try Google Books if key available
-    if(apiKey && !found){
-      try{
-        const q=encodeURIComponent((b.title+' '+(b.author||'')).trim());
-        const d=await(await fetch(`https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=1&key=${apiKey}`)).json();
-        const v=d.items?.[0]?.volumeInfo;
-        if(v){
-          const thumb=fixCover(v.imageLinks?.thumbnail||v.imageLinks?.smallThumbnail||'');
-          if(thumb){b.cover=thumb;found=true;}
-          if(!b.releaseDate&&v.publishedDate)b.releaseDate=v.publishedDate;
-          if(!b.author&&v.authors)b.author=v.authors.join(', ');
-        }
-      }catch(e){}
+    // Try title+author first, then title alone
+    const queries=[(b.title+' '+(b.author||'')).trim(), b.title.trim()];
+    for(const q of queries){
+      if(found)break;
+      const eq=encodeURIComponent(q);
+      // Google Books (works without key, key removes rate-limit)
+      if(!found){
+        try{
+          const url='https://www.googleapis.com/books/v1/volumes?q='+eq+'&maxResults=3'+(apiKey?'&key='+apiKey:'');
+          const d=await(await fetch(url)).json();
+          for(const item of(d.items||[])){
+            const v=item.volumeInfo;
+            const imgs=v.imageLinks||{};
+            const thumb=fixCover(imgs.thumbnail||imgs.smallThumbnail||imgs.medium||imgs.large||'');
+            if(thumb){b.cover=thumb;if(!b.releaseDate&&v.publishedDate)b.releaseDate=v.publishedDate;if(!b.author&&v.authors)b.author=v.authors.join(', ');found=true;break;}
+          }
+        }catch(e){}
+      }
+      // Open Library — free, no key, excellent indie/self-pub coverage
+      if(!found){
+        try{
+          const url='https://openlibrary.org/search.json?q='+eq+'&limit=5&fields=cover_i,first_publish_year,author_name';
+          const d=await(await fetch(url)).json();
+          for(const doc of(d.docs||[])){
+            if(doc.cover_i){
+              b.cover='https://covers.openlibrary.org/b/id/'+doc.cover_i+'-L.jpg';
+              if(!b.releaseDate&&doc.first_publish_year)b.releaseDate=String(doc.first_publish_year);
+              if(!b.author&&doc.author_name)b.author=doc.author_name.slice(0,2).join(', ');
+              found=true;break;
+            }
+          }
+        }catch(e){}
+      }
     }
-
-    // Open Library fallback — no key needed, great for indie books
-    if(!found){
-      try{
-        const q=encodeURIComponent((b.title+' '+(b.author||'')).trim());
-        const d=await(await fetch(`https://openlibrary.org/search.json?q=${q}&limit=1&fields=cover_i,first_publish_year,author_name`)).json();
-        const doc=d.docs?.[0];
-        if(doc){
-          if(doc.cover_i){b.cover=`https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg`;found=true;}
-          if(!b.releaseDate&&doc.first_publish_year)b.releaseDate=String(doc.first_publish_year);
-          if(!b.author&&doc.author_name)b.author=doc.author_name.slice(0,2).join(', ');
-        }
-      }catch(e){}
-    }
-
-    await new Promise(r=>setTimeout(r,80));
+    if((i+1)%5===0){save();render();}
+    await new Promise(r=>setTimeout(r,150));
   }
-  prog.style.display='none';
+  banner.style.display='none';
+  _fetchRunning=false;
   save();render();
+  const still=books.filter(b=>!b.cover).length;
+  if(still)alert(still+' book'+(still!==1?'s':'')+' still have no cover — they may not be in Google Books or Open Library.');
 }
 
 // ── Import ────────────────────────────────────────────────────────────────────
