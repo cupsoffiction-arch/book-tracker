@@ -409,7 +409,30 @@ function render(){
 }
 
 function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
-function fmtDate(d){try{return new Date(d).toLocaleDateString('en-GB',{year:'numeric',month:'short',day:'numeric'})}catch(e){return d}}
+function fmtDate(d){
+  if(!d)return'';
+  const s=String(d).trim();
+  // Year only: "2024"
+  if(/^\d{4}$/.test(s))return s;
+  // Year-month: "2024-03"
+  if(/^\d{4}-\d{2}$/.test(s)){
+    const [y,m]=s.split('-');
+    const dt=new Date(+y,+m-1,1);
+    return dt.toLocaleDateString('en-GB',{year:'numeric',month:'short'});
+  }
+  // Full date: "2024-03-15" — parse manually to avoid Safari timezone issues
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s)){
+    const [y,m,day]=s.split('-');
+    const dt=new Date(+y,+m-1,+day);
+    return dt.toLocaleDateString('en-GB',{year:'numeric',month:'short',day:'numeric'});
+  }
+  // Anything else: just return as-is (e.g. "March 2024", "2024-03-15T00:00:00")
+  try{
+    const dt=new Date(s);
+    if(!isNaN(dt.getTime()))return dt.toLocaleDateString('en-GB',{year:'numeric',month:'short',day:'numeric'});
+  }catch(e){}
+  return s;
+}
 function quickStatus(id,val){const b=books.find(x=>x.id===id);if(b){b.status=val;save();render()}}
 function fillStatus(elId,val){document.getElementById(elId).innerHTML=STATUSES.map(s=>`<option value="${s.id}"${s.id===val?' selected':''}>${s.label}</option>`).join('')}
 
