@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Shelf</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f3;color:#1a1a1a;min-height:100vh}
+.app{max-width:960px;margin:0 auto;padding:1.5rem 1rem}
+h1{font-size:22px;font-weight:500;letter-spacing:-0.3px}
+.subtext{font-size:13px;color:#666;margin-top:2px}
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;gap:12px;flex-wrap:wrap}
+.header-actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#1a1a1a;font-size:13px;cursor:pointer;transition:background .15s;font-family:inherit}
+.btn:hover{background:#f5f5f3}
+.btn.primary{background:#2D6A4F;color:#fff;border-color:#2D6A4F}
+.btn.primary:hover{background:#245940}
+.btn.dbtn{color:#b91c1c}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:10px;margin-bottom:1.5rem}
+.stat{background:#fff;border:1px solid #e5e5e5;border-radius:8px;padding:12px;text-align:center}
+.stat-num{font-size:22px;font-weight:500}
+.stat-label{font-size:11px;color:#888;margin-top:2px;text-transform:uppercase;letter-spacing:.5px}
+.toolbar{display:flex;gap:8px;margin-bottom:1.25rem;flex-wrap:wrap;align-items:center}
+.toolbar input{flex:1;min-width:180px;padding:7px 12px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#1a1a1a;font-size:13px;font-family:inherit}
+.toolbar select{padding:7px 12px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#1a1a1a;font-size:13px;cursor:pointer;font-family:inherit}
+.tab-bar{display:flex;gap:2px;background:#ebebeb;border-radius:8px;padding:3px;margin-bottom:1.25rem;width:fit-content;flex-wrap:wrap}
+.tab{padding:6px 13px;border-radius:6px;font-size:13px;cursor:pointer;border:none;background:transparent;color:#666;transition:all .15s;font-family:inherit}
+.tab.active{background:#fff;color:#1a1a1a;border:1px solid #ddd}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:14px}
+.card{background:#fff;border:1px solid #e5e5e5;border-radius:12px;overflow:hidden;cursor:pointer;transition:border-color .15s}
+.card:hover{border-color:#aaa}
+.cover-wrap{position:relative;aspect-ratio:2/3;background:#f0ede8;overflow:hidden}
+.cover-wrap img{width:100%;height:100%;object-fit:cover;display:block}
+.no-cover{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:10px;text-align:center}
+.no-cover i{font-size:26px;color:#bbb}
+.no-cover span{font-size:10px;color:#bbb;line-height:1.4}
+.owned-badge{position:absolute;top:6px;right:6px;background:#2D6A4F;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center}
+.owned-badge i{font-size:12px}
+.card-body{padding:9px}
+.card-title{font-size:12px;font-weight:500;line-height:1.35;margin-bottom:3px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.card-date{font-size:11px;color:#888;margin-bottom:6px}
+.sbadge{display:inline-block;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:500;white-space:nowrap}
+.ssel{width:100%;margin-top:6px;font-size:11px;padding:4px 6px;border:1px solid #e0e0e0;border-radius:6px;background:#f5f5f3;color:#1a1a1a;cursor:pointer;font-family:inherit}
+.empty{text-align:center;padding:3rem 1rem;color:#888;grid-column:1/-1}
+.empty i{font-size:38px;display:block;margin-bottom:10px;color:#ccc}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:200;padding:1rem}
+.modal{background:#fff;border-radius:14px;border:1px solid #e0e0e0;width:100%;max-width:520px;max-height:92vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.12)}
+.mhead{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.25rem 0}
+.mhead h2{font-size:16px;font-weight:500}
+.mbody{padding:1.25rem}
+.mfoot{padding:0 1.25rem 1.25rem;display:flex;gap:8px;justify-content:flex-end}
+.flabel{display:block;font-size:12px;color:#666;margin-bottom:4px;margin-top:12px}
+.flabel:first-child{margin-top:0}
+.finput{width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:8px;background:#f9f9f7;color:#1a1a1a;font-size:13px;font-family:inherit}
+textarea.finput{resize:vertical;min-height:58px}
+.crow{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px;cursor:pointer}
+.crow input{width:auto;cursor:pointer}
+.itabs{display:flex;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden;margin-bottom:1.25rem}
+.itab{flex:1;padding:10px 12px;font-size:13px;cursor:pointer;border:none;background:#f5f5f3;color:#666;display:flex;align-items:center;justify-content:center;gap:7px;border-right:1px solid #e0e0e0;font-family:inherit}
+.itab:last-child{border-right:none}
+.itab.active{background:#fff;color:#1a1a1a;font-weight:500}
+.ipane{display:none}
+.ipane.active{display:block}
+.dropz{border:1.5px dashed #ccc;border-radius:10px;padding:1.75rem;text-align:center;cursor:pointer}
+.dropz:hover{border-color:#2D6A4F}
+.dropz i{font-size:28px;color:#bbb;margin-bottom:8px;display:block}
+.dropz p{font-size:13px;font-weight:500;margin-bottom:2px}
+.dropz small{font-size:12px;color:#888}
+.hint{background:#f5f5f3;border-radius:8px;padding:10px 12px;margin-top:10px;font-size:12px;color:#666;line-height:1.6}
+.hint strong{color:#1a1a1a;font-weight:500}
+.hint ol{padding-left:1.1rem;margin-top:3px}
+.note{display:flex;align-items:flex-start;gap:8px;margin-top:10px;padding:10px 12px;background:#f5f5f3;border-radius:8px;font-size:12px;color:#555;line-height:1.5}
+.note.green{border-left:3px solid #2D6A4F}
+.note.blue{border-left:3px solid #1D4ED8}
+.note i{font-size:14px;flex-shrink:0;margin-top:1px}
+.note.green i{color:#2D6A4F}
+.note.blue i{color:#1D4ED8}
+.preview{margin-top:12px}
+.pstats{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;margin-bottom:8px}
+.plist{max-height:130px;overflow-y:auto;border:1px solid #e5e5e5;border-radius:8px;padding:8px}
+.plist p{font-size:12px;padding:2px 0;display:flex;align-items:center;gap:6px}
+.plist .ptitle{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tag{display:inline-block;font-size:10px;padding:2px 6px;border-radius:10px;font-weight:500;flex-shrink:0}
+.tag.tnew{background:#f0f0f0;color:#555}
+.tag.tmerge{background:#dbeafe;color:#1d4ed8}
+.tag.towned{background:#dcfce7;color:#166534}
+.srlist{margin-top:10px;display:flex;flex-direction:column;gap:6px;max-height:220px;overflow-y:auto}
+.sritem{display:flex;gap:10px;align-items:center;padding:8px;border:1px solid #e5e5e5;border-radius:8px;cursor:pointer}
+.sritem:hover{background:#f5f5f3}
+.srthumb{width:34px;height:50px;flex-shrink:0;background:#f0ede8;border-radius:4px;overflow:hidden}
+.srthumb img{width:100%;height:100%;object-fit:cover}
+.srinfo strong{font-size:12px;display:block}
+.srinfo span{font-size:11px;color:#888}
+.clearbox{background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:14px;text-align:center}
+.clearbox p{font-size:13px;color:#b91c1c;margin-bottom:12px;line-height:1.5}
+.apibanner{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;margin-bottom:1.25rem;font-size:13px;color:#1d4ed8;display:flex;align-items:center;gap:10px}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div>
+      <h1><i class="ti ti-books" style="margin-right:6px;color:#2D6A4F"></i>my shelf</h1>
+      <p class="subtext">Track your TBR, ARCs, and reviews</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn" onclick="openImport()"><i class="ti ti-upload"></i> Import</button>
+      <button class="btn" onclick="openApiModal()"><i class="ti ti-key"></i> API key</button>
+      <button class="btn dbtn" onclick="openClearAll()"><i class="ti ti-trash"></i> Clear all</button>
+      <button class="btn primary" onclick="openAdd()"><i class="ti ti-plus"></i> Add book</button>
+    </div>
+  </div>
+  <div id="apibanner" class="apibanner" style="display:none">
+    <i class="ti ti-info-circle"></i>
+    <span>Set a Google Books API key to fetch covers and release dates automatically.</span>
+    <button class="btn" style="margin-left:auto;padding:4px 10px;font-size:12px" onclick="openApiModal()">Set key</button>
+  </div>
+  <div class="stats" id="stats"></div>
+  <div class="tab-bar" id="tabs"></div>
+  <div class="toolbar">
+    <input type="text" id="q" placeholder="Search by title or author…" oninput="render()">
+    <select id="sortby" onchange="render()">
+      <option value="added">Recently added</option>
+      <option value="title">Title A–Z</option>
+      <option value="date">Release date</option>
+      <option value="status">Status</option>
+    </select>
+    <label class="crow" style="white-space:nowrap"><input type="checkbox" id="ownedOnly" onchange="render()"> Owned only</label>
+  </div>
+  <div class="grid" id="grid"></div>
+</div>
+
+<!-- Clear all -->
+<div class="overlay" id="clearModal" style="display:none" onclick="if(event.target===this)closeAll()">
+  <div class="modal" style="max-width:380px" onclick="event.stopPropagation()">
+    <div class="mhead"><h2>Clear all books</h2><button class="btn" style="padding:4px 8px" onclick="closeAll()"><i class="ti ti-x"></i></button></div>
+    <div class="mbody">
+      <div class="clearbox">
+        <p>This will permanently remove <strong id="clearCount">all books</strong> from your shelf. This cannot be undone.</p>
+        <div style="display:flex;gap:8px;justify-content:center">
+          <button class="btn" onclick="closeAll()">Cancel</button>
+          <button class="btn" style="background:#fef2f2;color:#b91c1c;border-color:#fca5a5" onclick="clearAll()"><i class="ti ti-trash"></i> Yes, clear everything</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add / Edit -->
+<div class="overlay" id="addModal" style="display:none" onclick="if(event.target===this)closeAll()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="mhead"><h2 id="addTitle">Add book</h2><button class="btn" style="padding:4px 8px" onclick="closeAll()"><i class="ti ti-x"></i></button></div>
+    <div class="mbody">
+      <span class="flabel">Search Google Books</span>
+      <div style="display:flex;gap:8px">
+        <input class="finput" type="text" id="gbQ" placeholder="Title, author, or ISBN…" onkeydown="if(event.key==='Enter')doSearch()" style="flex:1">
+        <button class="btn" onclick="doSearch()"><i class="ti ti-search"></i> Search</button>
+      </div>
+      <div class="srlist" id="srList"></div>
+      <p style="font-size:12px;color:#888;margin-top:10px;text-align:center">— or fill in manually below —</p>
+      <span class="flabel">Title *</span><input class="finput" type="text" id="fTitle" placeholder="Book title">
+      <span class="flabel">Author</span><input class="finput" type="text" id="fAuthor" placeholder="Author name">
+      <span class="flabel">Release date</span><input class="finput" type="text" id="fDate" placeholder="e.g. 2024-03-15">
+      <span class="flabel">Cover URL</span><input class="finput" type="text" id="fCover" placeholder="https://…">
+      <span class="flabel">Status</span><select class="finput" id="fStatus"></select>
+      <span class="flabel">Notes</span><textarea class="finput" id="fNotes" placeholder="Optional notes…"></textarea>
+      <label class="crow"><input type="checkbox" id="fOwned"> I physically own this book</label>
+    </div>
+    <div class="mfoot">
+      <button class="btn dbtn" id="delBtn" style="display:none;margin-right:auto" onclick="deleteBook()"><i class="ti ti-trash"></i> Delete</button>
+      <button class="btn" onclick="closeAll()">Cancel</button>
+      <button class="btn primary" onclick="saveBook()">Save book</button>
+    </div>
+  </div>
+</div>
+
+<!-- Import -->
+<div class="overlay" id="importModal" style="display:none" onclick="if(event.target===this)closeAll()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="mhead"><h2>Import books</h2><button class="btn" style="padding:4px 8px" onclick="closeAll()"><i class="ti ti-x"></i></button></div>
+    <div class="mbody">
+      <div class="itabs">
+        <button class="itab active" id="itab-gr" onclick="switchImportTab('gr')"><i class="ti ti-brand-goodreads"></i> Goodreads export</button>
+        <button class="itab" id="itab-tbr" onclick="switchImportTab('tbr')"><i class="ti ti-home"></i> Physical TBR sheet</button>
+      </div>
+      <div class="ipane active" id="ipane-gr">
+        <div class="dropz" onclick="document.getElementById('fileGr').click()">
+          <i class="ti ti-file-spreadsheet"></i>
+          <p>Upload Goodreads CSV export</p>
+          <small>goodreads_library_export.csv</small>
+          <input type="file" id="fileGr" accept=".csv" style="display:none" onchange="loadCSV(event,'gr')">
+        </div>
+        <div class="hint">
+          <strong>How to export from Goodreads</strong>
+          <ol><li>Go to goodreads.com → My Books</li><li>Click <em>Import and export</em> (bottom of left sidebar)</li><li>Click <em>Export Library</em> and download the CSV</li></ol>
+          Shelves map automatically: <em>to-read → To Be Read</em>, <em>currently-reading → Reading Now</em>, <em>read → Read & Reviewed</em>.
+        </div>
+        <div class="note blue"><i class="ti ti-git-merge"></i><span>If a book from Goodreads already exists on your shelf (e.g. from your physical TBR), the two are <strong>merged into one entry</strong> — owned flag kept, cover/author filled in where missing, more specific status wins. No duplicate created.</span></div>
+        <div id="prevGr" class="preview"></div>
+      </div>
+      <div class="ipane" id="ipane-tbr">
+        <div class="dropz" onclick="document.getElementById('fileTbr').click()">
+          <i class="ti ti-home"></i>
+          <p>Upload your physical TBR sheet</p>
+          <small>Any CSV with a title column</small>
+          <input type="file" id="fileTbr" accept=".csv" style="display:none" onchange="loadCSV(event,'tbr')">
+        </div>
+        <div class="hint">
+          <strong>Expected columns</strong> (any order, flexible names):<br>
+          <code style="font-size:11px">title</code>, <code style="font-size:11px">author</code>, <code style="font-size:11px">date / published</code>, <code style="font-size:11px">status</code>, <code style="font-size:11px">cover</code><br><br>
+          Recognised status values: <em>tbr, arc, reading, review, film, dnf, editing, done</em> — anything else defaults to To Be Read.
+        </div>
+        <div class="note green"><i class="ti ti-home"></i><span>Every book in this sheet is <strong>flagged as physically owned</strong>. If it already exists on your shelf from Goodreads, it is merged and the owned flag added — no duplicate entry is created.</span></div>
+        <div class="note blue"><i class="ti ti-git-merge"></i><span>Matching uses <strong>normalised title</strong> (lowercase, punctuation stripped, leading "the/a/an" ignored), so "The Hobbit" and "Hobbit, The" still match correctly.</span></div>
+        <div id="prevTbr" class="preview"></div>
+      </div>
+    </div>
+    <div class="mfoot">
+      <button class="btn" onclick="closeAll()">Cancel</button>
+      <button class="btn primary" id="confirmImport" style="display:none" onclick="doImport()">Import books</button>
+    </div>
+  </div>
+</div>
+
+<!-- API key -->
+<div class="overlay" id="apiModal" style="display:none" onclick="if(event.target===this)closeAll()">
+  <div class="modal" style="max-width:420px" onclick="event.stopPropagation()">
+    <div class="mhead"><h2>Google Books API key</h2><button class="btn" style="padding:4px 8px" onclick="closeAll()"><i class="ti ti-x"></i></button></div>
+    <div class="mbody">
+      <p style="font-size:13px;color:#666;margin-bottom:12px">Get a free key at <a href="https://console.cloud.google.com/apis/library/books.googleapis.com" style="color:#2D6A4F" target="_blank">Google Cloud Console</a> → enable Books API → create credentials.</p>
+      <span class="flabel">API key</span><input class="finput" type="text" id="apiKeyInput" placeholder="AIza…">
+    </div>
+    <div class="mfoot">
+      <button class="btn" onclick="closeAll()">Cancel</button>
+      <button class="btn primary" onclick="saveApiKey()">Save key</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const STATUSES=[
+  {id:'tbr',    label:'To Be Read',         color:'#6B7280',bg:'#F3F4F6'},
+  {id:'arc',    label:'ARC Received',        color:'#7C3AED',bg:'#EDE9FE'},
+  {id:'reading',label:'Reading Now',         color:'#1D4ED8',bg:'#DBEAFE'},
+  {id:'review', label:'Write Review',        color:'#B45309',bg:'#FEF3C7'},
+  {id:'film',   label:'Film Review',         color:'#0F766E',bg:'#CCFBF1'},
+  {id:'dnf',    label:'DNF',                 color:'#DC2626',bg:'#FEE2E2'},
+  {id:'editing',label:'Editing in Progress', color:'#9D174D',bg:'#FCE7F3'},
+  {id:'done',   label:'Read & Reviewed',     color:'#166534',bg:'#DCFCE7'}
+];
+const SMAP=Object.fromEntries(STATUSES.map(s=>[s.id,s]));
+const SPRI={tbr:0,arc:1,reading:2,review:3,film:3,dnf:2,editing:3,done:4};
+const ALL_TABS=[{id:'all',label:'All'},...STATUSES.map(s=>({id:s.id,label:s.label}))];
+
+let books=[], apiKey='', activeTab='all', editId=null, pending=[], pendingType='';
+
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
+
+// Normalise title: lowercase, strip leading articles, strip non-alphanumeric
+function norm(s){return(s||'').toLowerCase().replace(/^(the|a|an)\s+/,'').replace(/[^a-z0-9]/g,'')}
+
+// Find existing book by normalised title
+function findBook(title){const k=norm(title);return books.find(b=>norm(b.title)===k)||null}
+
+// Merge incoming record into existing — never creates a duplicate
+// owned: true if either says owned
+// cover/author/date: fill blanks only
+// status: higher priority wins
+function mergeInto(ex,inc){
+  if(inc.owned) ex.owned=true;
+  if(!ex.cover       && inc.cover)       ex.cover=inc.cover;
+  if(!ex.author      && inc.author)      ex.author=inc.author;
+  if(!ex.releaseDate && inc.releaseDate) ex.releaseDate=inc.releaseDate;
+  if((SPRI[inc.status]||0)>(SPRI[ex.status]||0)) ex.status=inc.status;
+}
+
+function save(){try{localStorage.setItem('shelf_v2',JSON.stringify(books));localStorage.setItem('shelf_key',apiKey)}catch(e){}}
+function load(){try{const d=localStorage.getItem('shelf_v2');if(d)books=JSON.parse(d);const k=localStorage.getItem('shelf_key');if(k)apiKey=k}catch(e){}}
+
+load();
+if(!apiKey) document.getElementById('apibanner').style.display='flex';
+
+function renderStats(){
+  document.getElementById('stats').innerHTML=`
+    <div class="stat"><div class="stat-num">${books.length}</div><div class="stat-label">Total</div></div>
+    <div class="stat"><div class="stat-num">${books.filter(b=>b.owned).length}</div><div class="stat-label">Owned</div></div>
+    <div class="stat"><div class="stat-num">${books.filter(b=>b.status==='arc').length}</div><div class="stat-label">ARCs</div></div>
+    <div class="stat"><div class="stat-num">${books.filter(b=>b.status==='reading').length}</div><div class="stat-label">Reading</div></div>
+    <div class="stat"><div class="stat-num">${books.filter(b=>b.status==='done').length}</div><div class="stat-label">Reviewed</div></div>`;
+}
+
+function renderTabs(){
+  const counts={};books.forEach(b=>{counts[b.status]=(counts[b.status]||0)+1});
+  document.getElementById('tabs').innerHTML=ALL_TABS.map(t=>{
+    const n=t.id==='all'?books.length:(counts[t.id]||0);
+    if(t.id!=='all'&&!n)return'';
+    return`<button class="tab${activeTab===t.id?' active':''}" onclick="setTab('${t.id}')">${t.label} <span style="opacity:.45;font-size:11px">${n}</span></button>`;
+  }).join('');
+}
+function setTab(id){activeTab=id;render()}
+
+function render(){
+  renderStats();renderTabs();
+  const q=document.getElementById('q').value.toLowerCase();
+  const sort=document.getElementById('sortby').value;
+  const ownedOnly=document.getElementById('ownedOnly').checked;
+  let list=[...books];
+  if(activeTab!=='all') list=list.filter(b=>b.status===activeTab);
+  if(ownedOnly) list=list.filter(b=>b.owned);
+  if(q) list=list.filter(b=>(b.title+' '+(b.author||'')).toLowerCase().includes(q));
+  if(sort==='title') list.sort((a,b)=>a.title.localeCompare(b.title));
+  else if(sort==='date') list.sort((a,b)=>(b.releaseDate||'').localeCompare(a.releaseDate||''));
+  else if(sort==='status') list.sort((a,b)=>(SPRI[b.status]||0)-(SPRI[a.status]||0));
+  else list.sort((a,b)=>b.addedAt-a.addedAt);
+  const grid=document.getElementById('grid');
+  if(!list.length){
+    grid.innerHTML=`<div class="empty"><i class="ti ti-bookmarks"></i>No books here yet.<br><small style="color:#bbb">Import a CSV or add a book manually.</small></div>`;
+    return;
+  }
+  grid.innerHTML=list.map(b=>{
+    const s=SMAP[b.status]||STATUSES[0];
+    const cover=b.cover?`<img src="${b.cover}" alt="" loading="lazy">`:`<div class="no-cover"><i class="ti ti-book"></i><span>${esc(b.title)}</span></div>`;
+    const owned=b.owned?`<div class="owned-badge" title="Physically owned"><i class="ti ti-home"></i></div>`:'';
+    const opts=STATUSES.map(st=>`<option value="${st.id}"${st.id===b.status?' selected':''}>${st.label}</option>`).join('');
+    return`<div class="card" onclick="openEdit('${b.id}')">
+      <div class="cover-wrap">${cover}${owned}</div>
+      <div class="card-body">
+        <div class="card-title">${esc(b.title)}</div>
+        ${b.releaseDate?`<div class="card-date">${fmtDate(b.releaseDate)}</div>`:''}
+        <span class="sbadge" style="background:${s.bg};color:${s.color}">${s.label}</span>
+        <select class="ssel" onclick="event.stopPropagation()" onchange="quickStatus('${b.id}',this.value)">${opts}</select>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function fmtDate(d){try{return new Date(d).toLocaleDateString('en-GB',{year:'numeric',month:'short',day:'numeric'})}catch(e){return d}}
+function quickStatus(id,val){const b=books.find(x=>x.id===id);if(b){b.status=val;save();render()}}
+function fillStatus(elId,val){document.getElementById(elId).innerHTML=STATUSES.map(s=>`<option value="${s.id}"${s.id===val?' selected':''}>${s.label}</option>`).join('')}
+
+function openClearAll(){
+  if(!books.length){alert('Your shelf is already empty.');return}
+  document.getElementById('clearCount').textContent=`all ${books.length} book${books.length!==1?'s':''}`;
+  document.getElementById('clearModal').style.display='flex';
+}
+function clearAll(){books=[];activeTab='all';save();closeAll();render()}
+
+function openAdd(){
+  editId=null;
+  document.getElementById('addTitle').textContent='Add book';
+  document.getElementById('delBtn').style.display='none';
+  ['fTitle','fAuthor','fDate','fCover','fNotes','gbQ'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('fOwned').checked=false;
+  document.getElementById('srList').innerHTML='';
+  fillStatus('fStatus','tbr');
+  document.getElementById('addModal').style.display='flex';
+}
+function openEdit(id){
+  const b=books.find(x=>x.id===id);if(!b)return;
+  editId=id;
+  document.getElementById('addTitle').textContent='Edit book';
+  document.getElementById('delBtn').style.display='inline-flex';
+  document.getElementById('fTitle').value=b.title;
+  document.getElementById('fAuthor').value=b.author||'';
+  document.getElementById('fDate').value=b.releaseDate||'';
+  document.getElementById('fCover').value=b.cover||'';
+  document.getElementById('fNotes').value=b.notes||'';
+  document.getElementById('fOwned').checked=!!b.owned;
+  document.getElementById('gbQ').value='';
+  document.getElementById('srList').innerHTML='';
+  fillStatus('fStatus',b.status);
+  document.getElementById('addModal').style.display='flex';
+}
+function saveBook(){
+  const title=document.getElementById('fTitle').value.trim();
+  if(!title){alert('Title is required.');return}
+  const data={title,author:document.getElementById('fAuthor').value.trim(),releaseDate:document.getElementById('fDate').value.trim(),cover:document.getElementById('fCover').value.trim(),status:document.getElementById('fStatus').value,notes:document.getElementById('fNotes').value.trim(),owned:document.getElementById('fOwned').checked};
+  if(editId){
+    Object.assign(books.find(x=>x.id===editId),data);
+  } else {
+    const ex=findBook(title);
+    if(ex){
+      if(!confirm(`"${ex.title}" is already on your shelf. Merge these details into it?`))return;
+      mergeInto(ex,data);
+    } else {
+      books.push({id:uid(),addedAt:Date.now(),...data});
+    }
+  }
+  save();closeAll();render();
+}
+function deleteBook(){
+  if(!confirm('Remove this book from your shelf?'))return;
+  books=books.filter(x=>x.id!==editId);
+  save();closeAll();render();
+}
+function closeAll(){document.querySelectorAll('.overlay').forEach(m=>m.style.display='none')}
+
+async function doSearch(){
+  const q=document.getElementById('gbQ').value.trim();if(!q)return;
+  const el=document.getElementById('srList');
+  el.innerHTML='<p style="font-size:12px;color:#888;padding:6px">Searching…</p>';
+  try{
+    const url=`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=8${apiKey?'&key='+apiKey:''}`;
+    const d=await(await fetch(url)).json();
+    if(!d.items||!d.items.length){el.innerHTML='<p style="font-size:12px;color:#888;padding:6px">No results found.</p>';return}
+    window._sr=d.items;
+    el.innerHTML=d.items.map((it,i)=>{
+      const v=it.volumeInfo;
+      const th=(v.imageLinks?.thumbnail||v.imageLinks?.smallThumbnail||'').replace('http://','https://');
+      return`<div class="sritem" onclick="pickBook(${i})">
+        <div class="srthumb">${th?`<img src="${th}" alt="">`:''}</div>
+        <div class="srinfo"><strong>${esc(v.title||'Untitled')}</strong><span>${(v.authors||[]).join(', ')}${v.publishedDate?' · '+v.publishedDate:''}</span></div>
+      </div>`;
+    }).join('');
+  }catch(e){el.innerHTML='<p style="font-size:12px;color:#b91c1c;padding:6px">Search failed — check your API key.</p>'}
+}
+function pickBook(i){
+  const v=window._sr[i].volumeInfo;
+  document.getElementById('fTitle').value=v.title||'';
+  document.getElementById('fAuthor').value=(v.authors||[]).join(', ');
+  document.getElementById('fDate').value=v.publishedDate||'';
+  const th=(v.imageLinks?.thumbnail||v.imageLinks?.smallThumbnail||'').replace('http://','https://');
+  document.getElementById('fCover').value=th;
+  document.getElementById('srList').innerHTML='<p style="font-size:12px;color:#166534;padding:6px">✓ Details filled in — review and save.</p>';
+}
+
+function openImport(){
+  switchImportTab('gr');pending=[];
+  ['prevGr','prevTbr'].forEach(id=>document.getElementById(id).innerHTML='');
+  document.getElementById('confirmImport').style.display='none';
+  ['fileGr','fileTbr'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('importModal').style.display='flex';
+}
+function switchImportTab(t){
+  ['gr','tbr'].forEach(x=>{
+    document.getElementById('itab-'+x).classList.toggle('active',x===t);
+    document.getElementById('ipane-'+x).classList.toggle('active',x===t);
+  });
+  pending=[];pendingType=t;
+  document.getElementById('confirmImport').style.display='none';
+}
+
+function loadCSV(evt,type){
+  const file=evt.target.files[0];if(!file)return;
+  pendingType=type;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const raw=parseCSV(e.target.result,type);
+    if(!raw.length){
+      document.getElementById('prev'+cap(type)).innerHTML='<p style="color:#b91c1c;font-size:13px">Could not parse CSV — make sure it has a title column.</p>';
+      return;
+    }
+    // Step 1: deduplicate within the uploaded file by normalised title
+    const seenKeys=new Set();
+    const deduped=[];
+    let inFileDups=0;
+    for(const r of raw){
+      const k=norm(r.title);
+      if(seenKeys.has(k)){inFileDups++;continue;}
+      seenKeys.add(k);
+      deduped.push(r);
+    }
+    // Step 2: classify each unique row against existing shelf
+    for(const r of deduped) r._action=findBook(r.title)?'merge':'add';
+    pending=deduped;
+    const toAdd=deduped.filter(r=>r._action==='add').length;
+    const toMerge=deduped.filter(r=>r._action==='merge').length;
+    const sample=deduped.slice(0,7);
+    document.getElementById('prev'+cap(type)).innerHTML=`
+      <div class="pstats">
+        <span><strong>${toAdd}</strong> new book${toAdd!==1?'s':''} to add</span>
+        ${toMerge?`<span style="color:#1d4ed8"><strong>${toMerge}</strong> will merge with existing</span>`:''}
+        ${inFileDups?`<span style="color:#888"><strong>${inFileDups}</strong> in-file duplicate${inFileDups!==1?'s':''} removed</span>`:''}
+      </div>
+      <div class="plist">
+        ${sample.map(r=>`<p>
+          <span class="ptitle">${esc(r.title)}${r.author?` <span style="color:#888">– ${esc(r.author)}</span>`:''}</span>
+          ${r._action==='merge'?'<span class="tag tmerge">merge</span>':(type==='tbr'?'<span class="tag towned">owned + add</span>':'<span class="tag tnew">new</span>')}
+        </p>`).join('')}
+        ${deduped.length>7?`<p style="color:#888">…and ${deduped.length-7} more</p>`:''}
+      </div>`;
+    document.getElementById('confirmImport').style.display='inline-flex';
+  };
+  reader.readAsText(file);
+}
+
+function cap(s){return s.charAt(0).toUpperCase()+s.slice(1)}
+
+// Final import: merge or add, never duplicate
+function doImport(){
+  let added=0,merged=0;
+  for(const b of pending){
+    const ex=findBook(b.title);
+    if(ex){mergeInto(ex,b);merged++;}
+    else{const{_action,...clean}=b;books.push(clean);added++;}
+  }
+  save();closeAll();render();
+  pending=[];
+  const msg=[added?`${added} book${added!==1?'s':''} added`:'',merged?`${merged} merged with existing entries`:''].filter(Boolean);
+  alert(msg.join(' · ')||'Nothing to import.');
+}
+
+function parseCSV(text,type){
+  const lines=text.split(/\r?\n/).filter(l=>l.trim());
+  if(lines.length<2)return[];
+  const headers=splitLine(lines[0]).map(h=>h.toLowerCase().replace(/[^a-z0-9]/g,''));
+  const col=(...names)=>{for(const n of names){const i=headers.findIndex(h=>h.includes(n));if(i>=0)return i;}return -1};
+  const tC=col('title'),aC=col('author'),dC=col('date','published','release'),cC=col('cover','image','thumbnail');
+  const SA={'tbr':'tbr','to be read':'tbr','arc':'arc','arc received':'arc','arcreceived':'arc','reading':'reading','reading now':'reading','currentlyreading':'reading','review':'review','write review':'review','writereview':'review','film':'film','film review':'film','filmreview':'film','dnf':'dnf','editing':'editing','editing in progress':'editing','editinginprogress':'editing','done':'done','read':'done','read reviewed':'done','read and reviewed':'done','read&reviewed':'done'};
+  return lines.slice(1).map(line=>{
+    const c=splitLine(line);
+    const title=(tC>=0?c[tC]||'':'').replace(/^"|"$/g,'').trim();
+    if(!title)return null;
+    const author=(aC>=0?c[aC]||'':'').replace(/^"|"$/g,'').trim();
+    const releaseDate=(dC>=0?c[dC]||'':'').replace(/^"|"$/g,'').trim();
+    const cover=(cC>=0?c[cC]||'':'').replace(/^"|"$/g,'').trim();
+    let status='tbr';
+    if(type==='gr'){
+      const sC=col('exclusive','shelve','shelf','bookshelve');
+      const shelf=(sC>=0?(c[sC]||''):'').toLowerCase().replace(/[^a-z]/g,'');
+      if(shelf.includes('currentlyreading'))status='reading';
+      else if(shelf==='read')status='done';
+    } else {
+      const sC=col('status');
+      const raw=(sC>=0?(c[sC]||''):'').replace(/^"|"$/g,'').trim().toLowerCase().replace(/[^a-z ]/g,'').trim();
+      status=SA[raw]||'tbr';
+    }
+    return{id:uid(),title,author,releaseDate,cover,status,owned:type==='tbr',notes:'',addedAt:Date.now()};
+  }).filter(Boolean);
+}
+
+function splitLine(line){
+  const res=[];let cur='';let inQ=false;
+  for(let i=0;i<line.length;i++){
+    const ch=line[i];
+    if(ch==='"'){inQ=!inQ;}else if(ch===','&&!inQ){res.push(cur);cur='';}else cur+=ch;
+  }
+  res.push(cur);return res;
+}
+
+function openApiModal(){document.getElementById('apiKeyInput').value=apiKey;document.getElementById('apiModal').style.display='flex'}
+function saveApiKey(){apiKey=document.getElementById('apiKeyInput').value.trim();save();if(apiKey)document.getElementById('apibanner').style.display='none';closeAll()}
+
+render();
+</script>
+</body>
+</html>
