@@ -118,7 +118,7 @@ textarea.finput{resize:vertical;min-height:58px}
   </div>
   <div id="apibanner" class="apibanner" style="display:none">
     <i class="ti ti-info-circle"></i>
-    <span>Set a Google Books API key to auto-fetch covers for all your books.</span>
+    <span>Search uses Google Books + Open Library (no key needed). Add a Google Books API key to remove rate limits and improve cover fetching.</span>
     <button class="btn" style="margin-left:auto;padding:4px 10px;font-size:12px" onclick="openApiModal()">Set key</button>
   </div>
   <div class="stats" id="stats"></div>
@@ -480,63 +480,118 @@ function deleteBook(){
 }
 function closeAll(){document.querySelectorAll('.overlay').forEach(m=>m.style.display='none')}
 
-// ── Google Books search ───────────────────────────────────────────────────────
+// ── Search: Google Books + Open Library fallback ──────────────────────────────
+// Results from both APIs are normalised into the same shape.
+// Open Library has no rate limit and no key — great for indie/small-press books.
 async function doSearch(){
   const q=document.getElementById('gbQ').value.trim();if(!q)return;
   const el=document.getElementById('srList');
   el.innerHTML='<p style="font-size:12px;color:#888;padding:6px">Searching…</p>';
+  let results=[];
+
+  // 1. Google Books (optional key removes rate limit)
   try{
     const url=`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=8${apiKey?'&key='+apiKey:''}`;
     const d=await(await fetch(url)).json();
-    if(!d.items||!d.items.length){el.innerHTML='<p style="font-size:12px;color:#888;padding:6px">No results.</p>';return}
-    window._sr=d.items;
-    el.innerHTML=d.items.map((it,i)=>{
-      const v=it.volumeInfo;
-      const th=fixCover(v.imageLinks?.thumbnail||v.imageLinks?.smallThumbnail||'');
-      return`<div class="sritem" onclick="pickBook(${i})">
-        <div class="srthumb">${th?`<img src="${th}" alt="">`:''}</div>
-        <div class="srinfo"><strong>${esc(v.title||'Untitled')}</strong><span>${(v.authors||[]).join(', ')}${v.publishedDate?' · '+v.publishedDate:''}</span></div>
-      </div>`;
-    }).join('');
-  }catch(e){el.innerHTML='<p style="font-size:12px;color:#b91c1c;padding:6px">Search failed — check your API key.</p>'}
+    if(d.items&&d.items.length){
+      results=d.items.map(it=>{
+        const v=it.volumeInfo;
+        return{title:v.title||'',author:(v.authors||[]).join(', '),date:v.publishedDate||'',cover:fixCover(v.imageLinks?.thumbnail||v.imageLinks?.smallThumbnail||''),source:'Google Books'};
+      });
+    }
+  }catch(e){}
+
+  // 2. Open Library fallback — always runs when Google returns < 3 results
+  if(results.length<3){
+    try{
+      const url=`https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&limit=8&fields=title,author_name,first_publish_year,cover_i`;
+      const d=await(await fetch(url)).json();
+      if(d.docs&&d.docs.length){
+        const olr=d.docs.map(doc=>({
+          title:doc.title||'',
+          author:(doc.author_name||[]).slice(0,2).join(', '),
+          date:doc.first_publish_year?String(doc.first_publish_year):'',
+          cover:doc.cover_i?`https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg`:'',
+          source:'Open Library'
+        }));
+        // Add OL results not already covered by Google Books
+        const seen=new Set(results.map(r=>norm(r.title)));
+        for(const r of olr){if(!seen.has(norm(r.title)))results.push(r);}
+      }
+    }catch(e){}
+  }
+
+  if(!results.length){
+    el.innerHTML='<p style="font-size:12px;color:#888;padding:6px">No results found on Google Books or Open Library.</p>';
+    return;
+  }
+  window._sr=results;
+  el.innerHTML=results.map((r,i)=>`
+    <div class="sritem" onclick="pickBook(${i})">
+      <div class="srthumb">${r.cover?`<img src="${r.cover}" alt="">`:''}</div>
+      <div class="srinfo">
+        <strong>${esc(r.title)}</strong>
+        <span>${r.author}${r.date?' · '+r.date:''}</span>
+        <span style="font-size:10px;color:#aaa">${r.source}</span>
+      </div>
+    </div>`).join('');
 }
+
 function pickBook(i){
-  const v=window._sr[i].volumeInfo;
-  document.getElementById('fTitle').value=v.title||'';
-  document.getElementById('fAuthor').value=(v.authors||[]).join(', ');
-  document.getElementById('fDate').value=v.publishedDate||'';
-  document.getElementById('fCover').value=fixCover(v.imageLinks?.thumbnail||v.imageLinks?.smallThumbnail||'');
+  const r=window._sr[i];
+  document.getElementById('fTitle').value=r.title;
+  document.getElementById('fAuthor').value=r.author;
+  document.getElementById('fDate').value=r.date;
+  document.getElementById('fCover').value=r.cover;
   document.getElementById('srList').innerHTML='<p style="font-size:12px;color:#166534;padding:6px">✓ Details filled in — review and save.</p>';
 }
 
-// ── Auto-fetch covers from Google Books ───────────────────────────────────────
-// Called after import for books missing a cover. Batches requests with a small delay.
+// ── Auto-fetch covers after import ───────────────────────────────────────────
+// Tries Google Books first (needs key), falls back to Open Library (free, no key).
+// Runs quietly in the background after import completes.
 async function fetchMissingCovers(bookList){
-  if(!apiKey) return; // only possible with an API key
   const missing=bookList.filter(b=>!b.cover);
-  if(!missing.length) return;
+  if(!missing.length)return;
   const prog=document.getElementById('fetchProgress');
   prog.style.display='block';
   for(let i=0;i<missing.length;i++){
     const b=missing[i];
     prog.textContent=`Fetching covers… ${i+1} / ${missing.length}`;
-    try{
-      const q=encodeURIComponent((b.title+' '+(b.author||'')).trim());
-      const url=`https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=1&key=${apiKey}`;
-      const d=await(await fetch(url)).json();
-      const v=d.items?.[0]?.volumeInfo;
-      if(v){
-        const thumb=fixCover(v.imageLinks?.thumbnail||v.imageLinks?.smallThumbnail||'');
-        if(thumb) b.cover=thumb;
-        if(!b.releaseDate && v.publishedDate) b.releaseDate=v.publishedDate;
-        if(!b.author && v.authors) b.author=v.authors.join(', ');
-      }
-    }catch(e){}
-    // small delay to avoid rate-limiting
-    await new Promise(r=>setTimeout(r,120));
+    let found=false;
+
+    // Try Google Books if key available
+    if(apiKey && !found){
+      try{
+        const q=encodeURIComponent((b.title+' '+(b.author||'')).trim());
+        const d=await(await fetch(`https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=1&key=${apiKey}`)).json();
+        const v=d.items?.[0]?.volumeInfo;
+        if(v){
+          const thumb=fixCover(v.imageLinks?.thumbnail||v.imageLinks?.smallThumbnail||'');
+          if(thumb){b.cover=thumb;found=true;}
+          if(!b.releaseDate&&v.publishedDate)b.releaseDate=v.publishedDate;
+          if(!b.author&&v.authors)b.author=v.authors.join(', ');
+        }
+      }catch(e){}
+    }
+
+    // Open Library fallback — no key needed, great for indie books
+    if(!found){
+      try{
+        const q=encodeURIComponent((b.title+' '+(b.author||'')).trim());
+        const d=await(await fetch(`https://openlibrary.org/search.json?q=${q}&limit=1&fields=cover_i,first_publish_year,author_name`)).json();
+        const doc=d.docs?.[0];
+        if(doc){
+          if(doc.cover_i){b.cover=`https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg`;found=true;}
+          if(!b.releaseDate&&doc.first_publish_year)b.releaseDate=String(doc.first_publish_year);
+          if(!b.author&&doc.author_name)b.author=doc.author_name.slice(0,2).join(', ');
+        }
+      }catch(e){}
+    }
+
+    await new Promise(r=>setTimeout(r,80));
   }
   prog.style.display='none';
-  save(); render();
+  save();render();
 }
 
 // ── Import ────────────────────────────────────────────────────────────────────
